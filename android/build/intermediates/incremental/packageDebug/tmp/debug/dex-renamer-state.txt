@@ -1,0 +1,4 @@
+#Sat Apr 25 10:31:41 EDT 2020
+base.0=/home/sebastian/Projects/LibGDX_Personal/GameJamOne/android/build/intermediates/dex/debug/mergeDexDebug/out
+path.0=classes.dex
+renamed.0=classes.dex
