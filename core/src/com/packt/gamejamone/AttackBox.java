@@ -1,6 +1,8 @@
 package com.packt.gamejamone;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
@@ -18,6 +20,13 @@ class AttackBox {
     private Texture attackThreeTexture;
     private Texture frameTexture;
     private Texture highlightTexture;
+
+    private String textDMG = "NULL";
+    private String textCost = "Null";
+    private float xTextDMG;
+    private float yTextDMG;
+    private float xTextCost;
+    private float yTextCost;
 
     //Dimensions
     private final static float FRAME_WIDTH = 200;
@@ -47,6 +56,18 @@ class AttackBox {
         attack_two.y = y + OFFSET;
         attack_three.x = attack_two.x + attack_two.width + OFFSET;
         attack_three.y = y + OFFSET;
+    }
+
+    void setTextPosition(float xDMG, float yDMG, float xCost, float yCost){
+        xTextDMG = xDMG;
+        yTextDMG = yDMG;
+        xTextCost = xCost;
+        yTextCost = yCost;
+    }
+
+    void setText(int DMG, int cost){
+        textDMG = "" + DMG;
+        textCost = "" + cost;
     }
 
     private void setHighlight(int selection){
@@ -88,6 +109,13 @@ class AttackBox {
         shapeRenderer.rect(attack_two.x, attack_two.y, attack_two.width, attack_two.height);
         shapeRenderer.rect(attack_three.x, attack_three.y, attack_three.width, attack_three.height);
         shapeRenderer.rect(highlight.x, highlight.y, highlight.width, highlight.height);
+    }
+
+    void drawText(GlyphLayout glyphLayout, BitmapFont bitmapFont, SpriteBatch batch){
+        glyphLayout.setText(bitmapFont, textDMG);
+        bitmapFont.draw(batch, textDMG, xTextDMG, yTextDMG);
+        glyphLayout.setText(bitmapFont, textCost);
+        bitmapFont.draw(batch, textCost, xTextCost, yTextCost);
     }
 
     void draw(SpriteBatch batch){

@@ -1,6 +1,8 @@
 package com.packt.gamejamone;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
@@ -11,6 +13,10 @@ public class StatusBar {
     private float BAR_OFFSET;
 
     private int health;
+
+    private String text = "NULL";
+    private float xText;
+    private float yText;
 
     private Rectangle statusBarFrame;
     private Rectangle movingBarFrame;
@@ -39,6 +45,19 @@ public class StatusBar {
         statusBarFrame.y = y;
         movingBarFrame.x = x + BAR_OFFSET;
         movingBarFrame.y = y + BAR_OFFSET;
+    }
+
+    void setHealthText(int currentHealth, int fullHealth){
+        text = currentHealth + "/" + fullHealth;
+    }
+
+    void setStaminaText(int stamina){
+        text = stamina + "%";
+    }
+
+    void setTextPosition(float x, float y){
+        xText = x;
+        yText = y;
     }
 
     void setPositionPlayerStamina(){
@@ -81,6 +100,11 @@ public class StatusBar {
     void drawDebug(ShapeRenderer shapeRenderer) {
         shapeRenderer.rect(statusBarFrame.x, statusBarFrame.y, statusBarFrame.width, statusBarFrame.height);
         shapeRenderer.rect(movingBarFrame.x, movingBarFrame.y, movingBarFrame.width, movingBarFrame.height);
+    }
+
+    void drawText(GlyphLayout glyphLayout, BitmapFont bitmapFont, SpriteBatch batch){
+        glyphLayout.setText(bitmapFont, text);
+        bitmapFont.draw(batch, text, xText, yText);
     }
 
     void draw(SpriteBatch batch){
