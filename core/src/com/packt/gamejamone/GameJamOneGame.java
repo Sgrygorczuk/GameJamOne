@@ -7,6 +7,6 @@ public class GameJamOneGame extends Game {
 	@Override
 	public void create () {
 		//Calls game screen
-		setScreen(new StartScreen(this));
+		setScreen(new StartScreen());
 	}
 }

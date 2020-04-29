@@ -1,6 +1,5 @@
 package com.packt.gamejamone;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.ScreenAdapter;
@@ -75,10 +74,6 @@ class StartScreen extends ScreenAdapter {
     private static float WAIT_FLAG_TIME = 0.3f;
     private float waitFlagTimer = WAIT_FLAG_TIME;
 
-    //Rate at which the strength visual is updated
-    private static float STR_TIME = .2f;
-    private float strTimer = STR_TIME;
-
     //Time between the player or opponent winning and the game returning to the main menu
     private static float RESTART_TIME = 2f;
     private float restartTimer = RESTART_TIME;
@@ -114,8 +109,6 @@ class StartScreen extends ScreenAdapter {
     private GlyphLayout glyphLayout;
 
     //Flags
-    private boolean debugFlag = false;          //Tells screen to draw debug wireframe
-    private boolean textureFlag = true;         //Tells screen to draw textures
     private boolean computerFlag = false;       //Tells us if it's a computer or human as opponent
     private boolean announceFlag = false;
     private boolean waitFlag = false;           //Flag that displays the
@@ -134,8 +127,7 @@ class StartScreen extends ScreenAdapter {
     private int opponentAttackSelection = 0;        //Opponent's current attack
     private int lockedInOpponentAttackSelection = opponentAttackSelection;  //Opponent's attack that's being currently performed
 
-    private final Game game;
-    StartScreen(Game game) { this.game = game; }
+    StartScreen() {}
 
     /*
     Input: The width and height of the screen
@@ -250,7 +242,7 @@ class StartScreen extends ScreenAdapter {
     */
     private void showPlayerUI(){
         //Sets up the bar that tells distance between the player and opponent
-        playerBar = setUpDistanceBar(pointerBarTexture, pointerTexture, 10, 100);
+        playerBar = setUpDistanceBar(pointerBarTexture, pointerTexture, 10);
         //Sets up the health bar
         playerHealth = setUpStatusBar(40, 5, true, healthFrameTexture, healthTexture,
                 10, 260, player.getHealthFull(), 10, 255);
@@ -258,8 +250,8 @@ class StartScreen extends ScreenAdapter {
         playerStamina = setUpStatusBar(15, 3, false, staminaFrameTexture, staminaTexture,
                 10, 10, 100, 215, 25);
         //Sets up the attackBox that displays attacks and their stats
-        playerAttackBox = setUpAttackBox(attackFrameTexture, player.getAttackArray(), highlightTexture, 10, 35,
-                215, 105, 215, 65);
+        playerAttackBox = setUpAttackBox(attackFrameTexture, player.getAttackArray(), highlightTexture, 10,
+                215, 215);
     }
 
     /*
@@ -269,7 +261,7 @@ class StartScreen extends ScreenAdapter {
     */
     private void showOpponentUI(){
         //Sets up the bar that tells distance between the player and opponent
-        opponentBar = setUpDistanceBar(pointerBarTexture, pointerTexture, 270, 100);
+        opponentBar = setUpDistanceBar(pointerBarTexture, pointerTexture, 270);
         //Sets up the health bar
         opponentHealth = setUpStatusBar(40, 5, true, healthFrameTexture, healthTexture,
                 270, 260, opponent.getHealthFull(), 440, 255);
@@ -278,7 +270,7 @@ class StartScreen extends ScreenAdapter {
                 270, 10, 100, 255, 25);
         //Sets up the attackBox that displays attacks and their stats
         opponentAttackBox = setUpAttackBox(attackFrameTexture, opponent.getAttackArray(), highlightTexture, 270,
-                35, 255, 105, 255, 65);
+                255, 255);
     }
 
     /*
@@ -288,11 +280,11 @@ class StartScreen extends ScreenAdapter {
     Purpose: Sets up the distance bar
     */
     private DistanceBar setUpDistanceBar(Texture pointerBarTexture, Texture pointerTexture,
-                                  float x, float y){
+                                         float x){
         //Creates the moving bar that tells the distance between user and opponent and allows
         //defense which move the user can use
         DistanceBar distanceBar = new DistanceBar(pointerBarTexture, pointerTexture);
-        distanceBar.setInitialPosition(x, y);
+        distanceBar.setInitialPosition(x, (float) 100);
         return distanceBar;
     }
 
@@ -324,13 +316,13 @@ class StartScreen extends ScreenAdapter {
     Purpose: Sets attack box UI which shows which attacks the user has and their stats
     */
     private AttackBox setUpAttackBox(Texture frameTexture, Array<Attack> attackArray, Texture highlightTexture,
-                                     float x, float y, float xDMG, float yDMG, float xCost, float yCost){
+                                     float x, float xDMG, float xCost){
         //Sets up the box with all of the necessary textures
         AttackBox attackBox = new AttackBox(frameTexture, attackArray.get(0).getTexture(), attackArray.get(1).getTexture(), attackArray.get(2).getTexture(), highlightTexture);
         //Sets up the position
-        attackBox.setPosition(x, y);
+        attackBox.setPosition(x, (float) 35);
         //Sets up the text positions
-        attackBox.setTextPosition(xDMG,yDMG,xCost,yCost);
+        attackBox.setTextPosition(xDMG, (float) 105,xCost, (float) 65);
         return attackBox;
     }
 
@@ -500,7 +492,7 @@ class StartScreen extends ScreenAdapter {
     public void render(float delta) {
         //Wipes screen black
         clearScreen();
-        if(textureFlag && !menuFlag && !tutorialFlag) {
+        if(!menuFlag && !tutorialFlag) {
             //Draws the game
             drawGameScreen();
             //As long as the game hasn't ended update all variables
@@ -520,7 +512,7 @@ class StartScreen extends ScreenAdapter {
         else{ drawMainMenu(); }
 
         //setDebugMode();                 //Checks if user changed the status of the debugModeFlag
-        if(debugFlag) {                 //If debugMode is on ShapeRender will drawing lines
+        if(false) {                     //If debugMode is on ShapeRender will drawing lines
             renderEnemy();              //Draws Enemy Wire Frame
             renderUser();               //Draws User Wire Frame
             renderBackground();         //Draws Background Wire Frame
@@ -625,7 +617,7 @@ class StartScreen extends ScreenAdapter {
         updatePlayerAction(delta);
         if(computerFlag){
             opponent.updateAI(delta);                   //AI Moves
-            initiateAttack(false, delta);      //AI Attacks
+            if(!missFlag && !hitFlag && !dodgeFlag) {initiateAttack(false, delta);}      //AI Attacks
         }
         else { updateOpponentAction(delta);}                     //Human
     }
@@ -687,7 +679,7 @@ class StartScreen extends ScreenAdapter {
             int diceRoll = MathUtils.random(fighterAttacker.getAccuracy(attackSelection),100);
             if(diceRoll > 50){
                 //Attacks the defender, if successful displays hit, if not displays dodge
-                if(fighterDefender.updateHealth((int) fighterAttacker.getStrength(attackSelection, delta))){hitFlag = true;}
+                if(fighterDefender.updateHealth(fighterAttacker.getStrength(attackSelection, delta))){hitFlag = true;}
                 else{dodgeFlag = true;}
             }
             //If they missed displays miss
@@ -861,8 +853,8 @@ class StartScreen extends ScreenAdapter {
         //Gives input power to menu
         Gdx.input.setInputProcessor(menu);
         //Resets the Character stats and position
-        restartCharacter(player, 120 - player.getWidth(),120);
-        restartCharacter(opponent,360,120);
+        restartCharacter(player, 120 - player.getWidth());
+        restartCharacter(opponent,360);
 
         //Restarts drawing flags
         playerDrawAttackFlag = false;
@@ -879,8 +871,8 @@ class StartScreen extends ScreenAdapter {
     Output: Void
     Purpose: Restarts the given character to a position, make their health full and stamina 0
     */
-    private void restartCharacter(Fighter fighter, float x, float y){
-        fighter.setPosition(x, y);
+    private void restartCharacter(Fighter fighter, float x){
+        fighter.setPosition(x, (float) 120);
         fighter.setHealth(fighter.getHealthFull());
         fighter.setStamina();
     }
@@ -964,14 +956,14 @@ class StartScreen extends ScreenAdapter {
     private void drawSigns(){
         //Attack signs
         if(waitFlag) {
-            if (hitFlag) { batch.draw(hitTexture, WORLD_WIDTH / 2 - hitTexture.getWidth() / 2, WORLD_HEIGHT / 2 - hitTexture.getHeight() / 2); }
-            if (missFlag) { batch.draw(missTexture, WORLD_WIDTH / 2 - missTexture.getWidth() / 2, WORLD_HEIGHT / 2 - missTexture.getHeight() / 2); }
-            if (dodgeFlag) { batch.draw(dodgeTexture, WORLD_WIDTH / 2 - dodgeTexture.getWidth() / 2, WORLD_HEIGHT / 2 - dodgeTexture.getHeight() / 2); }
+            if (hitFlag) { batch.draw(hitTexture,   WORLD_WIDTH / 2 - (float) hitTexture.getWidth() / 2, WORLD_HEIGHT / 2 - (float) hitTexture.getHeight() / 2); }
+            if (missFlag) { batch.draw(missTexture, WORLD_WIDTH / 2 - (float) missTexture.getWidth() / 2, WORLD_HEIGHT / 2 - (float) missTexture.getHeight() / 2); }
+            if (dodgeFlag) { batch.draw(dodgeTexture, WORLD_WIDTH / 2 - (float) dodgeTexture.getWidth() / 2, WORLD_HEIGHT / 2 - (float) dodgeTexture.getHeight() / 2); }
         }
 
         //Victory signs
-        if(catWinFlag){batch.draw(catWinTexture, WORLD_WIDTH/2 - catWinTexture.getWidth()/2, WORLD_HEIGHT/2 - catWinTexture.getHeight()/2);}
-        else if(dummyWinFlag){batch.draw(dummyWinTexture, WORLD_WIDTH/2 - dummyWinTexture.getWidth()/2, WORLD_HEIGHT/2 - dummyWinTexture.getHeight()/2);}
+        if(catWinFlag){batch.draw(catWinTexture, WORLD_WIDTH/2 - (float) catWinTexture.getWidth()/2, WORLD_HEIGHT/2 - (float) catWinTexture.getHeight()/2);}
+        else if(dummyWinFlag){batch.draw(dummyWinTexture, WORLD_WIDTH/2 - (float) dummyWinTexture.getWidth()/2, WORLD_HEIGHT/2 - (float) dummyWinTexture.getHeight()/2);}
     }
 
     /*
