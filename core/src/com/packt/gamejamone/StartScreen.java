@@ -21,6 +21,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ActorGestureListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
@@ -32,8 +33,8 @@ class StartScreen extends ScreenAdapter {
     private static final float WORLD_WIDTH = 480;
     private static final float WORLD_HEIGHT = 320;
 
-    private Stage menu;     //Button that leads to the pause menu
-    private Stage tutorial;
+    private Stage menu;     //Main screen buttons that choose if you're playing against a bot or not
+    private Stage tutorial;   //Button that allows the player to leave the turorial screen
 
     /*
     Image processing -- Objects that modify the view and textures
@@ -48,28 +49,41 @@ class StartScreen extends ScreenAdapter {
     private SpriteBatch batch;			 //Batch that holds all of the textures
 
     //Objects
-    private DistanceBar playerBar;
-    private DistanceBar opponentBar;
-    private StatusBar playerHealth;
-    private StatusBar opponentHealth;
-    private StatusBar playerStamina;
-    private StatusBar opponentStamina;
-    private AttackBox playerAttackBox;
-    private AttackBox opponentAttackBox;
-    private Fighter player;
-    private Fighter opponent;
+    private DistanceBar playerBar;      //Bar that tells the player how far they are from opponent
+    private DistanceBar opponentBar;    //Bar that tells the opponent how far they are from player
+    private StatusBar playerHealth;     //Displays player health, numeric visual and player name
+    private StatusBar opponentHealth;   //Displays the opponent health bar, numeric visual and name
+    private StatusBar playerStamina;    //Displays the players stamina bar and numeric value for it
+    private StatusBar opponentStamina;  //Displays the opponent stamina bar and numeric value of it
+    private AttackBox playerAttackBox;  //Displays the player attack box which shows off the move they have and attack details
+    private AttackBox opponentAttackBox;//Displays the opponent attack box which shows off the move they have and attack details
+    private Fighter player;             //The player unit through which all operations go through and from which info is drawn from
+    private Fighter opponent;           //The opponent unit through which all operations go through and from which info is drawn from
 
-    //Timing variable for how long it's idling
-    private static float MOVE_TIME = 0.5f;
-    private float moveTimer = MOVE_TIME;
+    //Timing variables
+    //Rate at which the stamina is ticked up
+    private static float STA_TIME = 0.5f;
+    private float staTimer = STA_TIME;
 
+    //Rate at which the hitFlag, missFlag, dodgeFlag,
+    // playerDrawAttackFlag, opponentDrawAttackFlag, waitFlag
+    //are reset
     private static float FLAG_TIME = 0.5f;
     private float flagTimer = FLAG_TIME;
 
+    //Wait period between the player or user hitting and the visual display showing the hit or miss sign
     private static float WAIT_FLAG_TIME = 0.3f;
     private float waitFlagTimer = WAIT_FLAG_TIME;
 
+    //Rate at which the strength visual is updated
+    private static float STR_TIME = .2f;
+    private float strTimer = STR_TIME;
 
+    //Time between the player or opponent winning and the game returning to the main menu
+    private static float RESTART_TIME = 2f;
+    private float restartTimer = RESTART_TIME;
+
+    //Textures
     private Texture healthTexture;
     private Texture healthFrameTexture;
     private Texture tutorialTexture;
@@ -78,10 +92,6 @@ class StartScreen extends ScreenAdapter {
     private Texture pointerTexture;
     private Texture pointerBarTexture;
     private Texture attackFrameTexture;
-    private Texture attackOneTexture;
-    private Texture attackTwoTexture;
-    private Texture attackThreeTexture;
-    private Texture attackEvilEyeTexture;
     private Texture highlightTexture;
     private Texture playerTexture;
     private Texture opponentTexture;
@@ -106,28 +116,23 @@ class StartScreen extends ScreenAdapter {
     //Flags
     private boolean debugFlag = false;          //Tells screen to draw debug wireframe
     private boolean textureFlag = true;         //Tells screen to draw textures
+    private boolean computerFlag = false;       //Tells us if it's a computer or human as opponent
     private boolean announceFlag = false;
-    private boolean waitFlag = false;
-    private boolean hitFlag = false;
-    private boolean dodgeFlag = false;
-    private boolean missFlag = false;
-    private boolean menuFlag = true;
-    private boolean endFlag = false;
-    private boolean catWinFlag = false;
-    private boolean dummyWinFlag = false;
-    private boolean tutorialFlag = false;
-    private boolean playerDrawAttackFlag = false;
-    private boolean opponentDrawAttackFlag = false;
-    private int playerAttackSelection = 0;
-    private int lockedInPlayerAttackSelection = playerAttackSelection;
-    private int opponentAttackSelection = 0;
-    private int lockedInOpponentAttackSelection = opponentAttackSelection;
-
-    private static float STR_TIME = .2f;
-    private float strTimer = STR_TIME;
-
-    private static float RESTART_TIME = 1f;
-    private float restartTimer = RESTART_TIME;
+    private boolean waitFlag = false;           //Flag that displays the
+    private boolean hitFlag = false;            //Flag that displays the hit sign
+    private boolean dodgeFlag = false;          //Flag that display the dodge sign
+    private boolean missFlag = false;           //Flag that displays the miss sign
+    private boolean menuFlag = true;            //Flag that displays the main menu
+    private boolean endFlag = false;            //Flag that tells the game is over
+    private boolean catWinFlag = false;         //Flag that displays the cat win sign
+    private boolean dummyWinFlag = false;       //Flag that displays the dummy win sign
+    private boolean tutorialFlag = false;       //Flag that displays the tutorial page
+    private boolean playerDrawAttackFlag = false;   //Flag that tells to display player attacking
+    private boolean opponentDrawAttackFlag = false; //Flag that tells to display opponent attacking
+    private int playerAttackSelection = 0;          //Player's current attack
+    private int lockedInPlayerAttackSelection = playerAttackSelection;  //Player's attack that being performed
+    private int opponentAttackSelection = 0;        //Opponent's current attack
+    private int lockedInOpponentAttackSelection = opponentAttackSelection;  //Opponent's attack that's being currently performed
 
     private final Game game;
     StartScreen(Game game) { this.game = game; }
@@ -152,8 +157,8 @@ class StartScreen extends ScreenAdapter {
         showCamera();           //Sets up camera through which objects are draw through
         showTexture();          //Connects textures to the images
         showObjects();          //Creates object and passes them the dimensions and textures
-        showMenuButton();
-        tutorialButton();
+        showMenuButton();       //Draws the main menu and it's buttons
+        tutorialButton();       //Draws the tutorial and it's buttons
         showRender();           //Sets up renders that will draw the debug of objects
 
         //Sets up the texture with the images
@@ -167,88 +172,172 @@ class StartScreen extends ScreenAdapter {
     /*
    Input: Void
    Output: Void
-   Purpose: Initializes the objects that are going to be displayed.
-   Mostly giving objects dimension, position and connecting them to textures.
+   Purpose: Function that initializes the major components that are updated through the game
    */
     private void showObjects(){
-        player = new Fighter(false, playerTexture);
-        player.setStats(5,5,30,5,120,30);
-        player.setPosition(120 - player.getWidth(),120);
-        player.setTexture(spriteSheetTexture);
-
-        Attack attack = new Attack(fireHitTexture);
-        attack.setAttributes("Short Attack", 5, 10, 10);
-        attack.setPosition(player.getX()+player.getWidth(), player.getY()+player.getHeight()/2);
-        attack.setSize(60,60);
-        player.addAttack(attack);
-
-        Attack attackTwo = new Attack(bulletHitTexture);
-        attackTwo.setAttributes("Medium Attack", 15, 1, 15);
-        attackTwo.setPosition(player.getX()+player.getWidth(), player.getY()+player.getHeight()/2);
-        attackTwo.setSize(10,10);
-        player.addAttack(attackTwo);
-
-        Attack attackThree = new Attack(fistHitTexture);
-        attackThree.setAttributes("Long Attack", 20, 15, 20);
-        attackThree.setPosition(player.getX()+player.getWidth(), player.getY()+player.getHeight()/2);
-        attackThree.setSize(30,30);
-        player.addAttack(attackThree);
-
-        opponent = new Fighter(true, opponentTexture);
-        opponent.setPosition(360,120);
-        opponent.setStats(10, 2, 60, 2, 200, 20);
-        opponent.setAI(2);
-
-        Attack attack1 = new Attack(scaryEyeTexture);
-        attack1.setAttributes("Evil eye", 30, 50, 50);
-        attack1.setPosition(opponent.getX(), opponent.getY()+3*opponent.getHeight()/4);
-        attack1.setSize(60,60);
-        opponent.addAttack(attack1);
-        opponent.addAttack(attack1);
-        opponent.addAttack(attack1);
-
-        playerBar = new DistanceBar(pointerBarTexture, pointerTexture);
-        playerBar.setInitialPosition(10, 100);
-
-        playerHealth = new StatusBar(40,5, true, healthFrameTexture, healthTexture);
-        playerHealth.setPosition(10, 260);
-        playerHealth.setHealth(player.getHealthFull());
-        playerHealth.setTextPosition(10, 255);
-
-
-        playerStamina = new StatusBar(15, 3, false, staminaFrameTexture, staminaTexture);
-        playerStamina.setPosition(10, 10);
-        playerStamina.setPositionPlayerStamina();
-        playerStamina.setHealth(100);
-        playerStamina.setTextPosition(215, 25);
-
-        playerAttackBox = new AttackBox(attackFrameTexture, attackThreeTexture, attackTwoTexture, attackOneTexture, highlightTexture);
-        playerAttackBox.setPosition(10, 35);
-        playerAttackBox.setTextPosition(215,105,215,65);
-
-        opponentBar = new DistanceBar(pointerBarTexture, pointerTexture);
-        opponentBar.setInitialPosition(270, 100);
-
-        opponentHealth = new StatusBar(40, 5, true, healthFrameTexture, healthTexture);
-        opponentHealth.setPosition(270, 260);
-        opponentHealth.setHealth(opponent.getHealthFull());
-        opponentHealth.setTextPosition(440, 255);
-
-        opponentStamina = new StatusBar(15, 3, false, staminaFrameTexture, staminaTexture);
-        opponentStamina.setPosition(270, 10);
-        opponentStamina.setHealth(100);
-        opponentStamina.setTextPosition(255,25);
-
-        opponentAttackBox = new AttackBox(attackFrameTexture, attackEvilEyeTexture, attackEvilEyeTexture, attackEvilEyeTexture, highlightTexture);
-        opponentAttackBox.setPosition(270, 35);
-        opponentAttackBox.setTextPosition(255,105,255,65);
-
+        showPlayer();           //Sets up the player and it's attacks
+        showPlayerUI();         //Sets up the UI that draw from the player
+        showOpponent();         //Sets up the opponent and it's UI
+        showOpponentUI();       //Sets up the UI that draws from the opponent
     }
 
     /*
     Input: Void
     Output: Void
-    Purpose: Sets up the button that will pause the game and bring up the menu
+    Purpose: Create the player and all of the attacks he posses
+    */
+    private void showPlayer(){
+        //Create the player
+        player = new Fighter(playerTexture);
+        //Set the players stats
+        player.setStats(5,5,30,5,120,30);
+        //Places the player on the left side of the screen
+        player.setPosition(120 - player.getWidth(),120);
+        //Give the player a sprite sheet to use
+        player.setTexture(spriteSheetTexture);
+
+        //Sets up the three attacks
+        setUpAttack(fireHitTexture, "Fire Ball", 5, 10, 10, player.getX()+player.getWidth(),
+                player.getY()+player.getHeight()/2, 60, 60, player);
+        setUpAttack(bulletHitTexture, "Cheating Gun", 15, 1, 15,player.getX()+player.getWidth(),
+                player.getY()+player.getHeight()/2, 10, 10 , player);
+        setUpAttack(fistHitTexture, "Fist", 20, 15, 20, player.getX()+player.getWidth(),
+                player.getY()+player.getHeight()/2, 30, 30, player);
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Create the opponent and all of the attacks its posses
+    */
+    private void showOpponent(){
+        opponent = new Fighter(opponentTexture);
+        opponent.setPosition(360,120);
+        opponent.setStats(10, 2, 60, 2, 200, 20);
+
+        setUpAttack(scaryEyeTexture, "Evil Eye", 30, 50, 50, opponent.getX(),
+                opponent.getY()+3*opponent.getHeight()/4, 60, 60, opponent );
+        setUpAttack(scaryEyeTexture, "Evil Eye", 30, 50, 50, opponent.getX(),
+                opponent.getY()+3*opponent.getHeight()/4, 60, 60, opponent );
+        setUpAttack(scaryEyeTexture, "Evil Eye", 30, 50, 50, opponent.getX(),
+                opponent.getY()+3*opponent.getHeight()/4, 60, 60, opponent );
+    }
+
+    /*
+    Input: Texture of attack, Stats: Name, STR, ACC, and STA, position where it spawns,
+        width and height of the attack, and who it belongs to
+    Output: Void
+    Purpose: Creates the attack for to be equipped to designated opponent
+    */
+    private void setUpAttack(Texture texture, String name, int STR, int ACC, int  STA,
+                             float x ,float y, float width, float height, Fighter fighter){
+        //Sets up the attack with texture
+        Attack attack = new Attack(texture);
+        //Sets up the attack stats
+        attack.setAttributes(name, STR, ACC, STA);
+        //Sets up where the attack will spawn
+        attack.setPosition(x, y);
+        //Sets the size of the attack image
+        attack.setSize(width,height);
+        //Adds the attack to the user
+        fighter.addAttack(attack);
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Set up all of the visual components that are updated form the user character
+    */
+    private void showPlayerUI(){
+        //Sets up the bar that tells distance between the player and opponent
+        playerBar = setUpDistanceBar(pointerBarTexture, pointerTexture, 10, 100);
+        //Sets up the health bar
+        playerHealth = setUpStatusBar(40, 5, true, healthFrameTexture, healthTexture,
+                10, 260, player.getHealthFull(), 10, 255);
+        //Sets up the stamina bar
+        playerStamina = setUpStatusBar(15, 3, false, staminaFrameTexture, staminaTexture,
+                10, 10, 100, 215, 25);
+        //Sets up the attackBox that displays attacks and their stats
+        playerAttackBox = setUpAttackBox(attackFrameTexture, player.getAttackArray(), highlightTexture, 10, 35,
+                215, 105, 215, 65);
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Set up all of the visual components that are updated form the user character
+    */
+    private void showOpponentUI(){
+        //Sets up the bar that tells distance between the player and opponent
+        opponentBar = setUpDistanceBar(pointerBarTexture, pointerTexture, 270, 100);
+        //Sets up the health bar
+        opponentHealth = setUpStatusBar(40, 5, true, healthFrameTexture, healthTexture,
+                270, 260, opponent.getHealthFull(), 440, 255);
+        //Sets up the stamina bar
+        opponentStamina = setUpStatusBar(15, 3, false, staminaFrameTexture, staminaTexture,
+                270, 10, 100, 255, 25);
+        //Sets up the attackBox that displays attacks and their stats
+        opponentAttackBox = setUpAttackBox(attackFrameTexture, opponent.getAttackArray(), highlightTexture, 270,
+                35, 255, 105, 255, 65);
+    }
+
+    /*
+    Input: Texture that shows background frame, Texture that shows the pointer
+            position of the frame
+    Output: DistanceBar
+    Purpose: Sets up the distance bar
+    */
+    private DistanceBar setUpDistanceBar(Texture pointerBarTexture, Texture pointerTexture,
+                                  float x, float y){
+        //Creates the moving bar that tells the distance between user and opponent and allows
+        //defense which move the user can use
+        DistanceBar distanceBar = new DistanceBar(pointerBarTexture, pointerTexture);
+        distanceBar.setInitialPosition(x, y);
+        return distanceBar;
+    }
+
+    /*
+    Input: Height of the frame, offset between frame and the inner bar, flag that tells if the bar
+        is filed empty, texture fo the frame and texture of the, moving bar, maxFill which tell the
+        full value of bar used for conversion between sta and pixel distance, and position of the text.
+    Output: StatusBar
+    Purpose: Sets up the health and stamina bars for player and opponent
+    */
+    private StatusBar setUpStatusBar(float height, float offset, boolean fullFlag, Texture barTexture,
+                                     Texture innerTexture, float x, float y, int maxFill,
+                                     float xText, float yText){
+        //Creates the bar with it's dimensions and texture
+        StatusBar statusBar = new StatusBar(height, offset, fullFlag, barTexture, innerTexture);
+        //Places the bar on screen
+        statusBar.setPosition(x, y);
+        //Finds out the conversion between user stats and screen size
+        statusBar.setHealth(maxFill);
+        //Places the text on screen
+        statusBar.setTextPosition(xText, yText);
+        return statusBar;
+    }
+
+    /*
+    Input: Frame Texture, Array of attacks of the user to grab the textures from, position,
+            Text positions
+    Output: AttackBox
+    Purpose: Sets attack box UI which shows which attacks the user has and their stats
+    */
+    private AttackBox setUpAttackBox(Texture frameTexture, Array<Attack> attackArray, Texture highlightTexture,
+                                     float x, float y, float xDMG, float yDMG, float xCost, float yCost){
+        //Sets up the box with all of the necessary textures
+        AttackBox attackBox = new AttackBox(frameTexture, attackArray.get(0).getTexture(), attackArray.get(1).getTexture(), attackArray.get(2).getTexture(), highlightTexture);
+        //Sets up the position
+        attackBox.setPosition(x, y);
+        //Sets up the text positions
+        attackBox.setTextPosition(xDMG,yDMG,xCost,yCost);
+        return attackBox;
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Shows the main menu
     */
     private void showMenuButton(){
         //Sets up stage to be screen size
@@ -264,12 +353,13 @@ class StartScreen extends ScreenAdapter {
         menuButton.setPosition(WORLD_WIDTH/2, WORLD_HEIGHT/2, Align.center);
         menu.addActor(menuButton);
 
-            menuButton.addListener(new ActorGestureListener() {@Override
+        //Turns off the main menu and turns on the tutorial, setting up the opponent to be a robot
+        menuButton.addListener(new ActorGestureListener() {@Override
             public void tap(InputEvent event, float x, float y, int count, int button) {
                 super.tap(event, x, y, count, button);
                 menuFlag = false;
                 tutorialFlag = true;
-                opponent.setUserOrAI(true);
+                computerFlag = true;
                 Gdx.input.setInputProcessor(tutorial);
             }
             });
@@ -279,22 +369,23 @@ class StartScreen extends ScreenAdapter {
         twoPlayer.setPosition(WORLD_WIDTH/2, WORLD_HEIGHT/2 - 80, Align.center);
         menu.addActor(twoPlayer);
 
+        //Turns off the main menu and turns on the tutorial, setting up the opponent to be a human
         twoPlayer.addListener(new ActorGestureListener() {@Override
         public void tap(InputEvent event, float x, float y, int count, int button) {
             super.tap(event, x, y, count, button);
             menuFlag = false;
             tutorialFlag = true;
-            opponent.setUserOrAI(false);
+            computerFlag = false;
             Gdx.input.setInputProcessor(tutorial);
         }
         });
     }
 
     /*
-Input: Void
-Output: Void
-Purpose: Sets up the button that will pause the game and bring up the menu
-*/
+    Input: Void
+    Output: Void
+    Purpose: Sets up the tutorial screen
+    */
     private void tutorialButton(){
         //Sets up stage to be screen size
         tutorial = new Stage(new FitViewport(WORLD_WIDTH,WORLD_HEIGHT));
@@ -308,11 +399,11 @@ Purpose: Sets up the button that will pause the game and bring up the menu
         tutorialButton.setPosition(WORLD_WIDTH/2, WORLD_HEIGHT/4, Align.center);
         tutorial.addActor(tutorialButton);
 
+        //Turns off the tutorial screen and begins the game
         tutorialButton.addListener(new ActorGestureListener() {@Override
         public void tap(InputEvent event, float x, float y, int count, int button) {
             super.tap(event, x, y, count, button);
             tutorialFlag = false;
-            menuFlag = false;
         }
         });
 
@@ -337,41 +428,44 @@ Purpose: Sets up the button that will pause the game and bring up the menu
     Purpose: Connects the images to the Texture objects
     */
     private void showTexture(){
+        //Health Bar Textures
         healthTexture = new Texture(Gdx.files.internal("Health.png"));
         healthFrameTexture = new Texture(Gdx.files.internal("HealthFrame.png"));
 
+        //Stamina Bar Textures
         staminaTexture = new Texture(Gdx.files.internal("STA.png"));
         staminaFrameTexture = new Texture(Gdx.files.internal("STAFrame.png"));
 
+        //Distance Bar Textures
         pointerBarTexture = new Texture(Gdx.files.internal("PointerBar.png"));
         pointerTexture = new Texture(Gdx.files.internal("Pointer.png"));
 
+        //Attack Textures
         attackFrameTexture = new Texture(Gdx.files.internal("AttackFrame.png"));
-        attackOneTexture = new Texture(Gdx.files.internal("AttackFrameClose.png"));
-        attackTwoTexture = new Texture(Gdx.files.internal("AttackFrameMedium.png"));
-        attackThreeTexture = new Texture(Gdx.files.internal("AttackFrameLong.png"));
-        attackEvilEyeTexture = new Texture(Gdx.files.internal("EvilEyeFrame.png"));
-        highlightTexture = new Texture(Gdx.files.internal("HighLight.png"));
-
-        playerTexture = new Texture(Gdx.files.internal("Player.png"));
-        spriteSheetTexture = new Texture(Gdx.files.internal("PlayerSpriteSheet.png"));
-        opponentTexture = new Texture(Gdx.files.internal("Opponent.png"));
-
-        hitTexture = new Texture(Gdx.files.internal("Hit.png"));
-        missTexture = new Texture(Gdx.files.internal("Miss.png"));
-        dodgeTexture = new Texture(Gdx.files.internal("Dodge.png"));
-
-        backgroundTexture = new Texture(Gdx.files.internal("Background.png"));
-
         fireHitTexture = new Texture(Gdx.files.internal("FireEffect.png"));
         fistHitTexture = new Texture(Gdx.files.internal("HandEffect.png"));
         bulletHitTexture = new Texture(Gdx.files.internal("BulletEffect.png"));
         scaryEyeTexture = new Texture(Gdx.files.internal("EyeEffect.png"));
+        highlightTexture = new Texture(Gdx.files.internal("HighLight.png"));
 
-        tutorialTexture = new Texture(Gdx.files.internal("Tutorial.png"));
+        //Character Textures
+        playerTexture = new Texture(Gdx.files.internal("Player.png"));
+        spriteSheetTexture = new Texture(Gdx.files.internal("PlayerSpriteSheet.png"));
+        opponentTexture = new Texture(Gdx.files.internal("Opponent.png"));
 
+        //Sign Textures
+        hitTexture = new Texture(Gdx.files.internal("Hit.png"));
+        missTexture = new Texture(Gdx.files.internal("Miss.png"));
+        dodgeTexture = new Texture(Gdx.files.internal("Dodge.png"));
         catWinTexture = new Texture(Gdx.files.internal("PawsWin.png"));
         dummyWinTexture = new Texture(Gdx.files.internal("DummyWin.png"));
+
+        //Background Texture
+        backgroundTexture = new Texture(Gdx.files.internal("Background.png"));
+
+        //Tutorial Screen Texture
+        tutorialTexture = new Texture(Gdx.files.internal("Tutorial.png"));
+
     }
 
     /*
@@ -404,11 +498,14 @@ Purpose: Sets up the button that will pause the game and bring up the menu
     */
     @Override
     public void render(float delta) {
-        clearScreen();	                //Wipes screen
-        //setTextureMode();               //Checks if the user changed the status of texturesOnFlag
+        //Wipes screen black
+        clearScreen();
         if(textureFlag && !menuFlag && !tutorialFlag) {
-            draw();
+            //Draws the game
+            drawGameScreen();
+            //As long as the game hasn't ended update all variables
             if(!endFlag){update(delta);}
+            //If game ended wait RESTART_TIME before going back to main menu and resetting the game
             else{
                 restartTimer -= delta;
                 if (restartTimer <= 0) {
@@ -416,40 +513,11 @@ Purpose: Sets up the button that will pause the game and bring up the menu
                     restart();
                 }
             }
-        }	    //Draws the textures
-        else if(tutorialFlag){
-            batch.setProjectionMatrix(camera.projection);
-            batch.setTransformMatrix(camera.view);
-            //Batch setting up texture
-            batch.begin();
-            batch.draw(tutorialTexture, 0 ,0, WORLD_WIDTH, WORLD_HEIGHT);
-            batch.end();
-
-            tutorial.draw();
-
-            batch.setProjectionMatrix(camera.projection);
-            batch.setTransformMatrix(camera.view);
-            //Batch setting up texture
-            batch.begin();
-            String One = "Play";
-            glyphLayout.setText(bitmapFont, One);
-            bitmapFont.draw(batch, One, WORLD_WIDTH/2 - glyphLayout.width/2, WORLD_HEIGHT/4 + glyphLayout.height/2);
-            batch.end();
         }
-        else{
-            menu.draw();
-            batch.setProjectionMatrix(camera.projection);
-            batch.setTransformMatrix(camera.view);
-            //Batch setting up texture
-            batch.begin();
-            String One = "Practice";
-            glyphLayout.setText(bitmapFont, One);
-            bitmapFont.draw(batch, One, WORLD_WIDTH/2 - glyphLayout.width/2, WORLD_HEIGHT/2 + glyphLayout.height/2);
-            String Two = "2 Player";
-            glyphLayout.setText(bitmapFont, Two);
-            bitmapFont.draw(batch, Two, WORLD_WIDTH/2 - glyphLayout.width/2, WORLD_HEIGHT/2 - 80 + glyphLayout.height/2);
-            batch.end();
-        }
+        //Draws tutorial screen
+        else if(tutorialFlag){ drawTutorialScreen();}
+        //Draws main menu
+        else{ drawMainMenu(); }
 
         //setDebugMode();                 //Checks if user changed the status of the debugModeFlag
         if(debugFlag) {                 //If debugMode is on ShapeRender will drawing lines
@@ -518,140 +586,267 @@ Purpose: Sets up the button that will pause the game and bring up the menu
         shapeRendererCollectible.end();
     }
 
-
     /*
-    Input: Void
+    Input: Delta, timing
     Output: Void
-    Purpose: Checks for user input if the user clicks turns the debugMode flag on and off
+    Purpose: Central function which updates all of the variables of the game
     */
-    private void setDebugMode() { if(Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) { debugFlag = !debugFlag;} }
-
-    /*
-    Input: Void
-    Output: Void
-    Purpose: Checks for user input if the user clicks turns the debugMode flag on and off
-    */
-    private void setTextureMode() { if(Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {textureFlag = !textureFlag;} }
-
     private void update(float delta){
-        updateUserAction(delta);
-        updatePlayerTwoAction(delta);
-        player.update(-1,0, opponent.getX(), delta);
-        opponent.update(-1,player.getX()+player.getWidth(), 480, delta);
-        playerHealth.setPlayerHealth(player.getHealthCurrent());
-        if(hitFlag || missFlag || dodgeFlag){updateFlags(delta);}
-        if(announceFlag){
-            waitFlagTimer -= delta;
-            if (waitFlagTimer <= 0) {
-                waitFlagTimer = WAIT_FLAG_TIME;
-                announceFlag = false;
-                waitFlag = true;
+        //Checks if we need to remove the sign off the screen
+        if(hitFlag || missFlag || dodgeFlag){resetFlags(delta);}
+        //Checks for user or opponent button presses
+        checkForCharacterAction(delta);
+        //Updates the animation and bounds in which the character cna move in
+        updateCharacterBounds(delta);
+        //If attack was started waits till it displays the result
+        if(announceFlag){checkForAnnouncement(delta);}
+        //Update the strength value
+        updateCharacterStrength(delta);
+        //Updates where the slider is based on position of characters
+        updateSliderPositions();
+        //Updates what attacks the characters can use based on their position
+        updateCharacterAttack();
+        //Restarts the position of the character objects
+        resetAttacksPositions();
+        //Update the current health of characters
+        updateHealth();
+        //Updates the current stamina of the characters
+        updateStamina(delta);
+        //Checks if either of the characters is dead
+        checkIfDead();
+    }
+
+    /*
+    Input: Delta, timing
+    Output: Void
+    Purpose: Checks if either the player or computer is initiating an attack
+    */
+    private void checkForCharacterAction(float delta){
+        updatePlayerAction(delta);
+        if(computerFlag){
+            opponent.updateAI(delta);                   //AI Moves
+            initiateAttack(false, delta);      //AI Attacks
+        }
+        else { updateOpponentAction(delta);}                     //Human
+    }
+
+    /*
+    Input: Delta for timing
+    Output: Void
+    Purpose: Checks if player clicked any of the buttons
+    */
+    private void updatePlayerAction(float delta){
+        if(Gdx.input.isKeyJustPressed(Input.Keys.A)) {player.updatePlayer(false);}
+        if(Gdx.input.isKeyJustPressed(Input.Keys.D)) {player.updatePlayer(true);}
+        if(Gdx.input.isKeyJustPressed(Input.Keys.W) && !missFlag && !hitFlag && !dodgeFlag) {initiateAttack(true, delta);}
+    }
+
+    /*
+    Input: Delta for timing
+    Output: Void
+    Purpose: Checks if opponent clicked any of the buttons
+    */
+    private void updateOpponentAction(float delta){
+        if(Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {opponent.updatePlayer(false);}
+        if(Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {opponent.updatePlayer(true);}
+        if(Gdx.input.isKeyJustPressed(Input.Keys.UP) && !missFlag && !hitFlag && !dodgeFlag) {initiateAttack(false, delta);}
+    }
+
+    /*
+    Input: userAttack, used to determine who initiated the attack
+    Output: Void
+    Purpose: Sets up the info to attack the other character
+    */
+    private void initiateAttack(boolean userAttack, float delta){
+        if(userAttack) {
+            lockedInPlayerAttackSelection = playerAttackSelection;
+            playerDrawAttackFlag = attack(player, opponent, lockedInPlayerAttackSelection, delta);
+        }
+        else{
+            lockedInOpponentAttackSelection = opponentAttackSelection;
+            opponentDrawAttackFlag = attack(opponent, player, lockedInOpponentAttackSelection, delta);
+        }
+    }
+
+    /*
+    Input: Attack is the person who's attack stats we pull, defender is who's defense stats we pull
+            and attack selection tells us which move the attacker is using
+    Output: Tells us to turn on the attack flag for that character
+    Purpose: Sets up the info to attack the other character
+    */
+    private boolean attack(Fighter fighterAttacker, Fighter fighterDefender, int attackSelection, float delta){
+        //Sets announce flag on to say that there will be a sign poping up soon
+        announceFlag = true;
+        //Checks if the attacker has enough stamina to attack
+        if(fighterAttacker.getSpendStamina(attackSelection)){
+            //Lowers the attackers stamina by the cost
+            fighterAttacker.updateStamina(fighterAttacker.getCurrentAttackCost(attackSelection), attackSelection);
+            //Does a roll of die to see if the attack hits or misses
+            System.out.println(attackSelection);
+            System.out.println(fighterAttacker.getAccuracy(attackSelection));
+            int diceRoll = MathUtils.random(fighterAttacker.getAccuracy(attackSelection),100);
+            if(diceRoll > 50){
+                //Attacks the defender, if successful displays hit, if not displays dodge
+                if(fighterDefender.updateHealth((int) fighterAttacker.getStrength(attackSelection, delta))){hitFlag = true;}
+                else{dodgeFlag = true;}
             }
+            //If they missed displays miss
+            else { missFlag = true;}
+            //Tells the attacker to draw the attack animation
+            return true;
         }
-        if(true && !missFlag && !hitFlag && !dodgeFlag){attackPlayerTwo();}
-        strTimer -= delta;
-        if (strTimer <= 0) {
-            strTimer = STR_TIME;
-            playerAttackBox.setText((int) player.getStrength(playerAttackSelection), player.getCurrentAttackCost(playerAttackSelection));
-            opponentAttackBox.setText((int) opponent.getStrength(opponentAttackSelection), opponent.getCurrentAttackCost(opponentAttackSelection));
-        }
-        playerStamina.setStaminaText((int) player.getStamina());
-        opponentStamina.setStaminaText((int) opponent.getStamina());
-        opponentHealth.setOpponentHealth(opponent.getHealthCurrent());
-        opponentHealth.setHealthText(opponent.getHealthCurrent(), opponent.getHealthFull());
-        playerHealth.setHealthText(player.getHealthCurrent(), player.getHealthFull());
+        //Tells attacker to stay as they are
+        else { return false; }
+    }
+
+    /*
+    Input: Delta for timing
+    Output: Void
+    Purpose: Updates the character the bound to which they can walk to
+    */
+    private void updateCharacterBounds(float delta){
+        player.updateBoundsAndAnimation(0, opponent.getX(), delta);
+        opponent.updateBoundsAndAnimation(player.getX()+player.getWidth(), 480, delta);
+    }
+
+    /*
+    Input: Delta for timing
+    Output: Void
+    Purpose: Updates the strength roll for this tick
+    */
+    private void updateCharacterStrength(float delta){
+        playerAttackBox.setText(player.getStrength(playerAttackSelection, delta), player.getCurrentAttackCost(playerAttackSelection));
+        opponentAttackBox.setText(opponent.getStrength(opponentAttackSelection, delta), opponent.getCurrentAttackCost(opponentAttackSelection));
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Updates the position of the slider
+    */
+    private void updateSliderPositions(){
         playerBar.updateSliderPositionPlayer(getDistanceBetweenFighters());
         opponentBar.updateSliderPositionOpponent(getDistanceBetweenFighters());
+    }
+
+    /*
+    Input: Void
+    Output: Distance between the characters
+    Purpose: Gets the distance between characters to update the slider position
+    */
+    private float getDistanceBetweenFighters() {return (opponent.getX() - player.getX() - player.getWidth()); }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Updates what attack the characters can use based on their position
+    */
+    private void updateCharacterAttack(){
         playerAttackSelection = playerAttackBox.updateHighlight(playerBar.getPositionOfSlider());
         opponentAttackSelection = opponentAttackBox.updateHighlight(opponentBar.getPositionOfSlider());
+    }
+
+    /*
+    Input: Delta, timing
+    Output: Void
+    Purpose: Ticks down for time till show the result of attack
+    */
+    private void checkForAnnouncement(float delta){
+        waitFlagTimer -= delta;
+        if (waitFlagTimer <= 0) {
+            waitFlagTimer = WAIT_FLAG_TIME;
+            announceFlag = false;       //Stop waiting
+            waitFlag = true;            //Display
+        }
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: If the player or opponents aren't being drawn then resets the position of their attacks
+    */
+    private void resetAttacksPositions(){
         if(!playerDrawAttackFlag){
             player.restartAttackPosition(player.getX()+player.getWidth(), player.getY()+player.getHeight()/2);
         }
         if(!opponentDrawAttackFlag){
             opponent.restartAttackPosition(opponent.getX(), opponent.getY()+2*opponent.getHeight()/3);
         }
-        moveTimer -= delta;
-        if (moveTimer <= 0) {
-            moveTimer = MOVE_TIME;
+    }
+
+    /*
+    Input: Delta for timing
+    Output: Void
+    Purpose: Updates the stamina increase and the visual representation every STA_TIME tick
+    */
+    private void updateStamina(float delta){
+        staTimer -= delta;
+        if (staTimer <= 0) {
+            staTimer = STA_TIME;
+            //Update the stamina in the characters
             player.updateStamina();
             opponent.updateStamina();
+            //Get that new stamina in the stamina bar
             playerStamina.setStaminaPlayer(player.getStamina());
             opponentStamina.setStaminaOpponent(opponent.getStamina());
-        }
-        checkIfDead();
-    }
-
-    void checkIfDead(){
-        if(player.getHealthCurrent() == 0) {
-            dummyWinFlag = true;
-            hitFlag = false;
-            endFlag = true;
-        }
-        else if(opponent.getHealthCurrent() == 0){
-            catWinFlag = true;
-            hitFlag = false;
-            endFlag = true;
+            //Updates the stamina Text
+            playerStamina.setStaminaText((int) player.getStamina());
+            opponentStamina.setStaminaText((int) opponent.getStamina());
         }
     }
 
-    float getDistanceBetweenFighters() { return (opponent.getX() - player.getX() - player.getWidth()); }
-
-    private void updateUserAction(float delta){
-        if(Gdx.input.isKeyJustPressed(Input.Keys.A)) {player.update(0, 0, opponent.getX(), delta);}
-        if(Gdx.input.isKeyJustPressed(Input.Keys.D)) {player.update(1, 0, opponent.getX(), delta);}
-        if(Gdx.input.isKeyJustPressed(Input.Keys.W) && !missFlag && !hitFlag && !dodgeFlag) {attackPlayerOne();}
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Updates the health bar visual and the numeric representation
+    */
+    private void updateHealth(){
+        //Update the bar
+        playerHealth.setPlayerHealth(player.getHealthCurrent());
+        opponentHealth.setOpponentHealth(opponent.getHealthCurrent());
+        //Update the text
+        opponentHealth.setHealthText(opponent.getHealthCurrent(), opponent.getHealthFull());
+        playerHealth.setHealthText(player.getHealthCurrent(), player.getHealthFull());
     }
 
-    private void updatePlayerTwoAction(float delta){
-        if(Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {opponent.update(0, player.getX()+player.getWidth(), 480, delta);}
-        if(Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {opponent.update(1, player.getX()+player.getWidth(), 480, delta);}
-        if(Gdx.input.isKeyJustPressed(Input.Keys.UP) && !missFlag && !hitFlag && !dodgeFlag) {attackPlayerTwo();}
-    }
-
-    private void attackPlayerOne(){
-        float staminaCost = player.getCurrentAttackCost(playerAttackSelection);
-        announceFlag = true;
-        lockedInPlayerAttackSelection = playerAttackSelection;
-        if(player.getStamina() > staminaCost){
-            playerDrawAttackFlag = player.updateStamina(staminaCost, playerAttackSelection);
-            int diceRoll = MathUtils.random((int)player.getAccuracy(playerAttackSelection),100);
-            if(diceRoll > 50){
-                System.out.println("Hit");
-                boolean flag = opponent.updateHealth((int) player.getStrength(playerAttackSelection));
-                if(flag){hitFlag = true;}
-                else{dodgeFlag = true;}
-            }
-            else { missFlag = true;}
-        }
-    }
-
-    private void attackPlayerTwo(){
-        float staminaCost = opponent.getCurrentAttackCost(opponentAttackSelection);
-        announceFlag = true;
-        lockedInOpponentAttackSelection = opponentAttackSelection;
-        if(opponent.getStamina() > staminaCost){
-            opponentDrawAttackFlag = opponent.updateStamina(staminaCost, opponentAttackSelection);
-            int diceRoll = MathUtils.random((int)player.getAccuracy(opponentAttackSelection),100);
-            if(diceRoll > 50){
-                System.out.println("Hit");
-                boolean flag = player.updateHealth((int) opponent.getStrength(opponentAttackSelection));
-                if(flag){hitFlag = true;}
-                else{dodgeFlag = true;}
-            }
-            else { missFlag = true;}
-        }
-    }
-
-    void updateFlags(float delta){
+    /*
+    Input: Delta, timing
+    Output: Void
+    Purpose: Turns off all the flags that have signs draw ontop
+    */
+    private void resetFlags(float delta){
         flagTimer -= delta;
         if (flagTimer <= 0) {
             flagTimer = FLAG_TIME;
+            //Attack Signs
             hitFlag = false;
             missFlag = false;
             dodgeFlag = false;
+            //Character pose flags
             playerDrawAttackFlag = false;
             opponentDrawAttackFlag = false;
+            //Pause between drawing flag
             waitFlag = false;
+        }
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Checks if either of the characters is dead, if so end game
+    */
+    private void checkIfDead(){
+        //Check if player died
+        if(player.getHealthCurrent() == 0) {
+            dummyWinFlag = true;        //Puts out opponent victory sign
+            hitFlag = false;            //Turns off hit sign
+            endFlag = true;             //Says to end game
+        }
+        //Check if opponent died
+        else if(opponent.getHealthCurrent() == 0){
+            catWinFlag = true;          //Puts out player victory sign
+            hitFlag = false;            //Turns off hit sign
+            endFlag = true;             //Say to end game
         }
     }
 
@@ -661,24 +856,76 @@ Purpose: Sets up the button that will pause the game and bring up the menu
     Purpose: Restart the variables to initial position and removes all flowers from array.
     */
     private void restart(){
+        //Turns on the menu
         menuFlag = true;
+        //Gives input power to menu
         Gdx.input.setInputProcessor(menu);
-        player.setPosition(120 - player.getWidth(),120);
-        player.setHealth(120);
-        player.setStamina(0);
+        //Resets the Character stats and position
+        restartCharacter(player, 120 - player.getWidth(),120);
+        restartCharacter(opponent,360,120);
 
-        playerHealth.setPosition(10, 260);
-        playerHealth.setHealth(player.getHealthFull());
-        playerHealth.setTextPosition(10, 255);
-
+        //Restarts drawing flags
         playerDrawAttackFlag = false;
         opponentDrawAttackFlag = false;
-        endFlag = false;
         catWinFlag = false;
         dummyWinFlag = false;
-        opponent.setPosition(360,120);
-        opponent.setHealth(200);
-        opponent.setStamina(0);
+
+        //Restarts the game end flag
+        endFlag = false;
+    }
+
+    /*
+    Input: Fighter, position
+    Output: Void
+    Purpose: Restarts the given character to a position, make their health full and stamina 0
+    */
+    private void restartCharacter(Fighter fighter, float x, float y){
+        fighter.setPosition(x, y);
+        fighter.setHealth(fighter.getHealthFull());
+        fighter.setStamina();
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws the main menu and it's buttons
+    */
+    private void drawMainMenu(){
+        menu.draw();
+        batch.setProjectionMatrix(camera.projection);
+        batch.setTransformMatrix(camera.view);
+        //Batch setting up texture
+        batch.begin();
+        //Draws text on buttons
+        drawText("Practice",WORLD_WIDTH/2 - glyphLayout.width/2, WORLD_HEIGHT/2 + glyphLayout.height/2 );
+        drawText("2 Player", WORLD_WIDTH/2 - glyphLayout.width/2, WORLD_HEIGHT/2 - 80 + glyphLayout.height/2);
+        batch.end();
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws the tutorial screen
+    */
+    private void drawTutorialScreen(){
+        //Set up camera
+        batch.setProjectionMatrix(camera.projection);
+        batch.setTransformMatrix(camera.view);
+
+        //Draw background
+        batch.begin();
+        batch.draw(tutorialTexture, 0 ,0, WORLD_WIDTH, WORLD_HEIGHT);
+        batch.end();
+
+        //Draw button on background
+        tutorial.draw();
+
+        batch.setProjectionMatrix(camera.projection);
+        batch.setTransformMatrix(camera.view);
+        //Draw text on button
+        batch.begin();
+        drawText("Play", WORLD_WIDTH/2 - glyphLayout.width/2, WORLD_HEIGHT/4 + glyphLayout.height/2);
+        batch.end();
     }
 
     /*
@@ -686,49 +933,112 @@ Purpose: Sets up the button that will pause the game and bring up the menu
     Output: Void
     Purpose: Central function that draws the textures
     */
-    private void draw() {
+    private void drawGameScreen() {
         //Viewport/Camera projection
         batch.setProjectionMatrix(camera.projection);
         batch.setTransformMatrix(camera.view);
         //Batch setting up texture
         batch.begin();
+        //Draw background
         batch.draw(backgroundTexture, 0,0, WORLD_WIDTH, WORLD_HEIGHT);
-        playerHealth.draw(batch);
+        //Draw characters
         player.draw(batch);
         opponent.draw(batch);
+        //Draws all the boxes that show of player stats
+        drawUI();
+        //Draws text to clarify those boxes
+        bitmapFont.getData().setScale(0.4f, 1f);
+        drawTextUI();
+        //Draws the attack being performed
+        drawAttack();
+        //Signs that overlay on top of the game
+        drawSigns();
+        batch.end();
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws the attack results and victory result signs
+    */
+    private void drawSigns(){
+        //Attack signs
         if(waitFlag) {
             if (hitFlag) { batch.draw(hitTexture, WORLD_WIDTH / 2 - hitTexture.getWidth() / 2, WORLD_HEIGHT / 2 - hitTexture.getHeight() / 2); }
             if (missFlag) { batch.draw(missTexture, WORLD_WIDTH / 2 - missTexture.getWidth() / 2, WORLD_HEIGHT / 2 - missTexture.getHeight() / 2); }
             if (dodgeFlag) { batch.draw(dodgeTexture, WORLD_WIDTH / 2 - dodgeTexture.getWidth() / 2, WORLD_HEIGHT / 2 - dodgeTexture.getHeight() / 2); }
         }
-        if(playerDrawAttackFlag){player.drawAttack(lockedInPlayerAttackSelection, true, batch);}
-        if(opponentDrawAttackFlag){opponent.drawAttack(lockedInOpponentAttackSelection, false, batch);}
-        playerStamina.draw(batch);
-        playerAttackBox.draw(batch);
-        playerBar.draw(batch);
-        opponentHealth.draw(batch);
-        playerAttackBox.drawText(glyphLayout, bitmapFont, batch);
-        opponentAttackBox.drawText(glyphLayout, bitmapFont, batch);
-        opponentStamina.drawText(glyphLayout, bitmapFont, batch);
-        playerStamina.drawText(glyphLayout, bitmapFont, batch);
-        opponentHealth.drawText(glyphLayout, bitmapFont, batch);
-        playerHealth.drawText(glyphLayout,bitmapFont,batch);
-        opponentStamina.draw(batch);
-        opponentAttackBox.draw(batch);
-        String DMGAsString = "DMG";
-        glyphLayout.setText(bitmapFont, DMGAsString);
-        bitmapFont.draw(batch, DMGAsString, WORLD_WIDTH/2 - glyphLayout.width/2, 105);
-        String ACCAsString = "COST";
-        glyphLayout.setText(bitmapFont, ACCAsString);
-        bitmapFont.draw(batch, ACCAsString, WORLD_WIDTH/2 - glyphLayout.width/2, 65);
-        String STAAsString = "STA";
-        glyphLayout.setText(bitmapFont, STAAsString);
-        bitmapFont.getData().setScale(0.4f, 1f);
-        bitmapFont.draw(batch, STAAsString, WORLD_WIDTH/2 - glyphLayout.width/2, 25);
-        opponentBar.draw(batch);
+
+        //Victory signs
         if(catWinFlag){batch.draw(catWinTexture, WORLD_WIDTH/2 - catWinTexture.getWidth()/2, WORLD_HEIGHT/2 - catWinTexture.getHeight()/2);}
         else if(dummyWinFlag){batch.draw(dummyWinTexture, WORLD_WIDTH/2 - dummyWinTexture.getWidth()/2, WORLD_HEIGHT/2 - dummyWinTexture.getHeight()/2);}
-        batch.end();
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws the attack that the character performs
+    */
+    private void drawAttack(){
+        if(playerDrawAttackFlag){player.drawAttack(lockedInPlayerAttackSelection, true, batch);}
+        if(opponentDrawAttackFlag){opponent.drawAttack(lockedInOpponentAttackSelection, false, batch);}
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws UI that represents player stats
+    */
+    private void drawUI(){
+        //Health Bar
+        playerHealth.draw(batch);
+        opponentHealth.draw(batch);
+
+        //Stamina BAr
+        playerStamina.draw(batch);
+        opponentStamina.draw(batch);
+
+        //Attack Box
+        playerAttackBox.draw(batch);
+        opponentAttackBox.draw(batch);
+
+        //Distance Bar
+        playerBar.draw(batch);
+        opponentBar.draw(batch);
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws Text UI that represents player stats
+    */
+    private void drawTextUI(){
+        //Health Text
+        opponentHealth.drawText(glyphLayout, bitmapFont, batch);
+        playerHealth.drawText(glyphLayout,bitmapFont,batch);
+
+        //Stamina Text
+        playerStamina.drawText(glyphLayout, bitmapFont, batch);
+        opponentStamina.drawText(glyphLayout, bitmapFont, batch);
+
+        //Attack Box Texts
+        playerAttackBox.drawText(glyphLayout, bitmapFont, batch);
+        opponentAttackBox.drawText(glyphLayout, bitmapFont, batch);
+
+        //Clarifying Text
+        drawText("DMG", WORLD_WIDTH/2 - glyphLayout.width/2, 105);
+        drawText("COST", WORLD_WIDTH/2 - glyphLayout.width/2, 65);
+        drawText("STA", WORLD_WIDTH/2 - glyphLayout.width/2, 25);
+    }
+
+    /*
+    Input: Void
+    Output: Void
+    Purpose: Draws given text on screen
+    */
+    private void drawText(String string, float x, float y){
+        glyphLayout.setText(bitmapFont, string);
+        bitmapFont.draw(batch, string, x, y);
     }
 
     /*
@@ -742,13 +1052,11 @@ Purpose: Sets up the button that will pause the game and bring up the menu
     }
 
     /*
-Input: Void
-Output: Void
-Purpose: Destroys everything once we move onto the new screen
-*/
+    Input: Void
+    Output: Void
+    Purpose: Destroys everything once we move onto the new screen
+    */
     @Override
     public void dispose() {
     }
-
-
 }
