@@ -2,12 +2,12 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/GameJamOne.iml" filepath="$PROJECT_DIR$/GameJamOne.iml" group="GameJamOne" />
-      <module fileurl="file://$PROJECT_DIR$/android/android.iml" filepath="$PROJECT_DIR$/android/android.iml" group="GameJamOne/android" />
-      <module fileurl="file://$PROJECT_DIR$/core/core.iml" filepath="$PROJECT_DIR$/core/core.iml" group="GameJamOne/core" />
-      <module fileurl="file://$PROJECT_DIR$/desktop/desktop.iml" filepath="$PROJECT_DIR$/desktop/desktop.iml" group="GameJamOne/desktop" />
-      <module fileurl="file://$PROJECT_DIR$/html/html.iml" filepath="$PROJECT_DIR$/html/html.iml" group="GameJamOne/html" />
-      <module fileurl="file://$PROJECT_DIR$/ios/ios.iml" filepath="$PROJECT_DIR$/ios/ios.iml" group="GameJamOne/ios" />
+      <module fileurl="file://$PROJECT_DIR$/GameJamOne.iml" filepath="$PROJECT_DIR$/GameJamOne.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/android/GameJamOne.android.iml" filepath="$PROJECT_DIR$/.idea/modules/android/GameJamOne.android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/GameJamOne.core.iml" filepath="$PROJECT_DIR$/.idea/modules/core/GameJamOne.core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/desktop/GameJamOne.desktop.iml" filepath="$PROJECT_DIR$/.idea/modules/desktop/GameJamOne.desktop.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/html/GameJamOne.html.iml" filepath="$PROJECT_DIR$/.idea/modules/html/GameJamOne.html.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ios/GameJamOne.ios.iml" filepath="$PROJECT_DIR$/.idea/modules/ios/GameJamOne.ios.iml" />
     </modules>
   </component>
 </project>

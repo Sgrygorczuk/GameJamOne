@@ -1,0 +1,4 @@
+#Sat May 02 12:54:27 EDT 2020
+base.0=/home/sebastian/Projects/LibGDX_Personal/SpaceHops/android/build/intermediates/dex/debug/out/classes.dex
+path.0=classes.dex
+renamed.0=classes.dex
